@@ -1,0 +1,132 @@
+name: Build ZBT WE1526 Firmware
+
+on:
+  push:
+    branches:
+      - zbt-we1526
+  pull_request:
+    branches:
+      - zbt-we1526
+
+permissions:
+  contents: write
+  packages: write
+  attestations: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-we1526:
+    name: Build ZBT WE1526 Firmware
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libncurses5-dev \
+            gawk \
+            git \
+            subversion \
+            libssl-dev \
+            gettext \
+            zlib1g-dev \
+            swig \
+            unzip \
+            time \
+            rsync \
+            python3
+
+      - name: Configure for ZBT WE1526
+        run: |
+          echo "CONFIG_TARGET_ath79=y" > .config.seed
+          echo "CONFIG_TARGET_ath79_generic=y" >> .config.seed
+          echo "CONFIG_TARGET_ath79_generic_DEVICE_zbtlink_zbt-we1526=y" >> .config.seed
+          echo "CONFIG_DEVEL=y" >> .config.seed
+          echo "CONFIG_BPF_TOOLCHAIN_HOST=y" >> .config.seed
+          cp .config.seed .config
+          make defconfig
+          cat .config | grep -E "CONFIG_TARGET.*ath79.*DEVICE.*zbtlink.*we1526"
+
+      - name: Build firmware
+        run: |
+          make -j$(nproc) BUILD_LOG=1
+
+      - name: Verify build artifacts
+        run: |
+          ls -la bin/targets/ath79/generic/
+          echo "---"
+          cat bin/targets/ath79/generic/sha256sums
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zbt-we1526-firmware
+          path: |
+            bin/targets/ath79/generic/openwrt-ath79-generic-zbtlink_zbt-we1526-initramfs-kernel.bin
+            bin/targets/ath79/generic/openwrt-ath79-generic-zbtlink_zbt-we1526-squashfs-sysupgrade.bin
+            bin/targets/ath79/generic/openwrt-ath79-generic-zbtlink_zbt-we1526.manifest
+            bin/targets/ath79/generic/sha256sums
+          retention-days: 30
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: zbt-we1526-packages
+          path: bin/targets/ath79/generic/packages/
+          retention-days: 30
+
+      - name: Generate build info
+        run: |
+          echo "Build completed successfully!" > build-info.txt
+          echo "Branch: ${{ github.ref }}" >> build-info.txt
+          echo "Commit: ${{ github.sha }}" >> build-info.txt
+          echo "Run ID: ${{ github.run_id }}" >> build-info.txt
+          date >> build-info.txt
+          echo "---" >> build-info.txt
+          echo "Artifacts:" >> build-info.txt
+          ls -la bin/targets/ath79/generic/*.bin >> build-info.txt
+
+      - name: Upload build info
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-info
+          path: build-info.txt
+          retention-days: 30
+
+      - name: Create git tag
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          VERSION=$(cat bin/targets/ath79/generic/version.buildinfo 2>/dev/null | head -1)
+          SHORT_SHA=${GITHUB_SHA:0:8}
+          TAG="zbt-we1526-${VERSION:-unknown}-${SHORT_SHA}"
+          echo "Creating tag: $TAG"
+          git tag -a "$TAG" -m "WE1526 firmware build $TAG"
+          git push origin "$TAG"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
+        with:
+          files: |
+            bin/targets/ath79/generic/openwrt-ath79-generic-zbtlink_zbt-we1526-initramfs-kernel.bin
+            bin/targets/ath79/generic/openwrt-ath79-generic-zbtlink_zbt-we1526-squashfs-sysupgrade.bin
+            bin/targets/ath79/generic/openwrt-ath79-generic-zbtlink_zbt-we1526.manifest
+            bin/targets/ath79/generic/sha256sums
+          draft: false
+          prerelease: true
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
