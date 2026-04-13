@@ -3405,6 +3405,19 @@ define Device/zbtlink_zbt-wd323
 endef
 TARGET_DEVICES += zbtlink_zbt-wd323
 
+define Device/zbtlink_zbt-we1526
+  SOC := qca9533
+  DEVICE_VENDOR := ZBT
+  DEVICE_MODEL := WE1526
+  IMAGE_SIZE := 16000k
+  DEVICE_PACKAGES := kmod-ath9k kmod-usb2 swconfig
+  LOADER_TYPE := bin
+  LZMA_TEXT_START := 0x84000000
+  KERNEL := kernel-bin | append-dtb | lzma | loader-kernel | uImage none
+  KERNEL_INITRAMFS := kernel-bin | append-dtb | lzma | loader-kernel | uImage none
+endef
+TARGET_DEVICES += zbtlink_zbt-we1526
+
 define Device/zyxel_nwa11xx
   $(Device/loader-okli-uimage)
   SOC := ar9342

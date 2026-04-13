@@ -15,6 +15,13 @@ case "$FIRMWARE" in
 	avm,fritzdvbc)
 		caldata_extract_reverse "urlader" 0x1541 0x440
 		;;
+	zbtlink,zbt-we1526)
+		# Calibration is pre-installed at /lib/firmware/
+		# Valid ar9300_eeprom for QCA9533: single-chain, 2.4GHz only
+		if [ -e /lib/firmware/$FIRMWARE ]; then
+			exit 0
+		fi
+		;;
 	*)
 		caldata_die "board $board is not supported yet"
 		;;
