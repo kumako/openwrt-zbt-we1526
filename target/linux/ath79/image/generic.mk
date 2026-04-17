@@ -3409,8 +3409,8 @@ define Device/zbtlink_zbt-we1526
   SOC := qca9533
   DEVICE_VENDOR := ZBT
   DEVICE_MODEL := WE1526
-  IMAGE_SIZE := 16000k
-  DEVICE_PACKAGES := kmod-ath9k kmod-usb2 swconfig
+  IMAGE_SIZE := 7744k
+  DEVICE_PACKAGES := ath10k-firmware-qca988x kmod-ath10k kmod-ath9k kmod-usb2 swconfig
   LOADER_TYPE := bin
   LZMA_TEXT_START := 0x84000000
   KERNEL := kernel-bin | append-dtb | lzma | loader-kernel | uImage none

@@ -105,19 +105,25 @@
 
 			uboot: partition@0 {
 				label = "u-boot";
-				reg = <0x000000 0x020000>;
+				reg = <0x000000 0x040000>;
 				read-only;
 			};
 
-			partition@20000 {
+			partition@40000 {
+				label = "u-boot-env";
+				reg = <0x040000 0x010000>;
+				read-only;
+			};
+
+			partition@50000 {
 				compatible = "denx,uimage";
 				label = "firmware";
-				reg = <0x020000 0x7c0000>;
+				reg = <0x050000 0x790000>;
 			};
 
 			art: partition@7e0000 {
 				label = "art";
-				reg = <0x7e0000 0x020000>;
+				reg = <0x7e0000 0x010000>;
 				read-only;
 
 				nvmem-layout {
@@ -131,6 +137,14 @@
 
 					macaddr_art_6: macaddr@6 {
 						reg = <0x6 0x6>;
+					};
+
+					cal_art_1000: calibration@1000 {
+						reg = <0x1000 0x440>;
+					};
+
+					cal_art_5000: calibration@5000 {
+						reg = <0x5000 0x844>;
 					};
 				};
 			};
@@ -154,7 +168,8 @@
 &wmac {
 	status = "okay";
 
-	qca,no-eeprom;
+	nvmem-cells = <&macaddr_art_0>, <&cal_art_1000>;
+	nvmem-cell-names = "mac-address", "calibration";
 };
 
 &usb0 {
@@ -163,4 +178,15 @@
 
 &usb_phy {
 	status = "okay";
+};
+
+&pcie0 {
+	status = "okay";
+
+	wifi@0,0 {
+		compatible = "qcom,ath10k";
+		reg = <0 0 0 0 0>;
+		nvmem-cells = <&cal_art_5000>, <&macaddr_art_6>;
+		nvmem-cell-names = "calibration", "mac-address";
+	};
 };
